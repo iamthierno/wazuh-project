@@ -1,0 +1,105 @@
+<!--
+  Règles complémentaires — équipements réseau (FortiGate, Palo Alto, Cisco ASA/IOS)
+  Plage d'ID réservée : 100100-100199
+  Ces règles complètent le ruleset natif Wazuh (aucune règle native n'est modifiée).
+  Test : scripts/test-device-logs.sh
+-->
+
+<!-- ============================ FortiGate ============================ -->
+<group name="fortigate,network_device,">
+
+  <!-- Brute force SSL VPN : 8 échecs depuis la même IP en 2 minutes -->
+  <rule id="100100" level="10" frequency="8" timeframe="120" ignore="300">
+    <if_matched_sid>81614</if_matched_sid>
+    <same_field>remip</same_field>
+    <description>FortiGate: brute force SSL VPN depuis $(remip) (8 échecs en 2 min).</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <!-- Toute modification de configuration est remontée (niveau 5 au lieu de 3) -->
+  <rule id="100101" level="5">
+    <if_sid>81612</if_sid>
+    <description>FortiGate: configuration modifiée par $(dstuser) ($(cfgpath) $(action)).</description>
+    <group>config_changed,pci_dss_10.2.7,pci_dss_11.5,</group>
+  </rule>
+
+  <!-- IPS : attaque critique détectée -->
+  <rule id="100102" level="12">
+    <if_sid>81629</if_sid>
+    <field name="severity">^critical$</field>
+    <description>FortiGate IPS: attaque critique $(attack) depuis $(srcip) vers $(dstip).</description>
+    <group>attack,ids,pci_dss_11.4,</group>
+  </rule>
+
+</group>
+
+<!-- ============================ Palo Alto ============================ -->
+<group name="paloalto,network_device,">
+
+  <!-- Échec d'authentification administrateur / GlobalProtect -->
+  <rule id="100110" level="5">
+    <if_sid>64500,64501,64502,64503,64504</if_sid>
+    <field name="type">^SYSTEM$</field>
+    <field name="event_id">^auth-fail$</field>
+    <description>Palo Alto: échec d'authentification pour $(object).</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+  </rule>
+
+  <rule id="100111" level="10" frequency="8" timeframe="120" ignore="300">
+    <if_matched_sid>100110</if_matched_sid>
+    <description>Palo Alto: multiples échecs d'authentification (brute force possible).</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_11.4,</group>
+  </rule>
+
+  <!-- Modification de configuration (niveau 0 par défaut dans le ruleset natif) -->
+  <rule id="100112" level="5">
+    <if_sid>64500,64501,64502,64503,64504</if_sid>
+    <field name="type">^CONFIG$</field>
+    <description>Palo Alto: modification de configuration.</description>
+    <group>config_changed,pci_dss_10.2.7,pci_dss_11.5,</group>
+  </rule>
+
+</group>
+
+<!-- ============================ Cisco ASA ============================ -->
+<group name="cisco-asa,network_device,">
+
+  <!-- %ASA-6-113015 : authentification AAA rejetée (niveau 0 par défaut) -->
+  <rule id="100120" level="5">
+    <if_sid>64005</if_sid>
+    <id>113015$</id>
+    <description>Cisco ASA: authentification AAA rejetée.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+  </rule>
+
+  <rule id="100121" level="10" frequency="8" timeframe="120" ignore="300">
+    <if_matched_sid>100120</if_matched_sid>
+    <description>Cisco ASA: multiples échecs d'authentification (brute force possible).</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_11.4,</group>
+  </rule>
+
+  <!-- %ASA-5-111008 / 111010 : commandes de configuration exécutées -->
+  <rule id="100122" level="5">
+    <if_sid>64000,64005</if_sid>
+    <id>111008$|111010$</id>
+    <match>write memory|copy running|configure|clear configure</match>
+    <description>Cisco ASA: commande de configuration exécutée.</description>
+    <group>config_changed,pci_dss_10.2.7,</group>
+  </rule>
+
+</group>

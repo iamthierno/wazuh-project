@@ -1,0 +1,4 @@
+May 12 10:00:00 SW-CORE 123: *May 12 10:00:00.123: %SEC_LOGIN-4-LOGIN_FAILED: Login failed [user: admin] [Source: 198.51.100.7] [localport: 22] [Reason: Login Authentication Failed] at 10:00:00 UTC Sun May 12 2024
+May 12 10:01:00 SW-CORE 124: *May 12 10:01:00.123: %SEC_LOGIN-5-LOGIN_SUCCESS: Login Success [user: admin] [Source: 192.168.1.10] [localport: 22] at 10:01:00 UTC Sun May 12 2024
+May 12 10:02:00 SW-CORE 125: *May 12 10:02:00.123: %SYS-5-CONFIG_I: Configured from console by admin on vty0 (192.168.1.10)
+May 12 10:03:00 SW-CORE 126: *May 12 10:03:00.123: %LINK-3-UPDOWN: Interface GigabitEthernet0/1, changed state to down

@@ -1,0 +1,5 @@
+.git
+agents/packages/*.deb
+agents/packages/*.rpm
+agents/packages/*.pkg
+agents/packages/*.msi

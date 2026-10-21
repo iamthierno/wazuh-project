@@ -1,0 +1,5 @@
+May 12 2024 10:00:00 ASA-HQ : %ASA-6-113015: AAA user authentication Rejected : reason = Invalid password : local database : user = admin : user IP = 198.51.100.7
+May 12 2024 10:00:05 ASA-HQ : %ASA-6-605005: Login permitted from 192.168.1.10/51515 to inside:192.168.1.1/ssh for user "admin"
+May 12 2024 10:00:10 ASA-HQ : %ASA-4-106023: Deny tcp src outside:203.0.113.9/4444 dst inside:192.168.1.20/445 by access-group "outside_access_in" [0x0, 0x0]
+May 12 2024 10:00:15 ASA-HQ : %ASA-5-111008: User 'admin' executed the 'write memory' command.
+May 12 2024 10:00:20 ASA-HQ : %ASA-4-722051: Group <GroupPolicy_VPN> User <jdoe> IP <203.0.113.50> IPv4 Address <10.10.10.5> IPv6 address <::> assigned to session

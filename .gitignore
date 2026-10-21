@@ -1,0 +1,11 @@
+# Paquets d'agents mis en cache (--offline)
+agents/packages/*
+!agents/packages/.gitkeep
+# Fichiers d'identifiants locaux
+agents/credentials
+*.creds
+# Sorties locales
+*.csv
+*.log
+!network-devices/samples/*.log
+__pycache__/
