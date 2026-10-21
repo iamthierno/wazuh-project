@@ -291,6 +291,8 @@ run_in_deployer() {
       return 1
     fi
   fi
+  # Le mot de passe déjà saisi est transmis au conteneur (pas de nouvelle demande)
+  [[ -n "$CLI_PASS" ]] && export WAZUH_DEPLOY_PASS="$CLI_PASS"
   log_info "Exécution dans le conteneur ${DEPLOYER_IMAGE} (réseau de l'hôte)"
   exec docker run --rm -i "${tty[@]}" --network host --cap-add NET_RAW --cap-add NET_ADMIN \
     -e TERM -e NO_COLOR -e WAZUH_DEPLOY_PASS "${mounts[@]}" "$DEPLOYER_IMAGE" "${ORIG_ARGS[@]}"
