@@ -1,0 +1,7 @@
+Oct 22 10:00:00 srv-web02 usermod[2210]: add 'backdoor' to group 'sudo'
+Oct 22 10:00:00 srv-web02 usermod[2210]: add 'backdoor' to shadow group 'sudo'
+Oct 22 10:00:00 srv-web02 sshd[999]: Accepted password for root from 203.0.113.5 port 5555 ssh2
+Oct 22 10:00:00 srv-web02 sshd[999]: Accepted password for admin from 203.0.113.5 port 5555 ssh2
+Oct 22 10:00:00 srv-web02 sshd[999]: Accepted password for admin from 192.168.1.50 port 5555 ssh2
+Oct 22 10:00:00 srv-web02 sudo:    admin : TTY=pts/0 ; PWD=/home/admin ; USER=root ; COMMAND=/usr/bin/cat /etc/shadow
+Oct 22 10:00:00 srv-web02 sshd[999]: Failed password for invalid user test from 198.51.100.66 port 5555 ssh2

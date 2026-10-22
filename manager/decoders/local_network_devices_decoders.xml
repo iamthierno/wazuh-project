@@ -1,0 +1,68 @@
+<!--
+  Décodeurs complémentaires — équipements réseau non couverts nativement
+  (validés avec scripts/test-device-logs.sh sur Wazuh 4.14.9)
+
+  - Juniper SRX en mode « event » (set security log mode event) :
+      RT_FLOW: RT_FLOW_SESSION_DENY: session denied 1.2.3.4/40000->10.0.0.5/22 0x0 junos-ssh 6(0) deny-all untrust trust ...
+      mgd[5678]: UI_COMMIT: User 'netadmin' requested 'commit' operation (comment: none)
+    Le décodeur natif « junos » n'accepte que le format structured-data relayé.
+  - MikroTik RouterOS (System > Logging > action remote) :
+      system,error,critical login failure for user admin from 1.2.3.4 via winbox
+-->
+
+<!-- ============================ Juniper SRX ============================ -->
+<decoder name="juniper-srx-flow">
+  <program_name>^RT_FLOW$</program_name>
+</decoder>
+
+<decoder name="juniper-srx-flow-fields">
+  <parent>juniper-srx-flow</parent>
+  <regex type="pcre2">^RT_FLOW_SESSION_(\w+): session \w+ ([0-9a-fA-F.:]+)/(\d+)->([0-9a-fA-F.:]+)/(\d+) \S+ (\S+) \S+ (\S+) (\S+) (\S+)</regex>
+  <order>action,srcip,srcport,dstip,dstport,service,policy,src_zone,dst_zone</order>
+</decoder>
+
+<decoder name="juniper-srx-mgmt">
+  <program_name>^mgd$</program_name>
+  <prematch>^UI_</prematch>
+</decoder>
+
+<decoder name="juniper-srx-mgmt-fields">
+  <parent>juniper-srx-mgmt</parent>
+  <regex type="pcre2">^(UI_\w+): User '([^']+)'</regex>
+  <order>event_type,dstuser</order>
+</decoder>
+
+<decoder name="juniper-srx-mgmt-fields">
+  <parent>juniper-srx-mgmt</parent>
+  <regex type="pcre2">from host '?([0-9a-fA-F.:]+)'?</regex>
+  <order>srcip</order>
+</decoder>
+
+<!-- ============================ MikroTik ============================ -->
+<decoder name="mikrotik">
+  <prematch type="pcre2">^(system|firewall|wireless|dhcp|interface|ppp|hotspot|account|script|critical|error|warning|info)(,\w+)* </prematch>
+</decoder>
+
+<decoder name="mikrotik-fields">
+  <parent>mikrotik</parent>
+  <regex type="pcre2">^(\S+) login failure for user (\S+) from ([0-9a-fA-F.:]+) via (\S+)</regex>
+  <order>topics,dstuser,srcip,service</order>
+</decoder>
+
+<decoder name="mikrotik-fields">
+  <parent>mikrotik</parent>
+  <regex type="pcre2">^(\S+) user (\S+) logged (in|out) from ([0-9a-fA-F.:]+) via (\S+)</regex>
+  <order>topics,dstuser,status,srcip,service</order>
+</decoder>
+
+<decoder name="mikrotik-fields">
+  <parent>mikrotik</parent>
+  <regex type="pcre2">^(\S+) (.+?) (added|changed|removed) by (\S+)</regex>
+  <order>topics,object,action,dstuser</order>
+</decoder>
+
+<decoder name="mikrotik-fields">
+  <parent>mikrotik</parent>
+  <regex type="pcre2">^(\S+) </regex>
+  <order>topics</order>
+</decoder>

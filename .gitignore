@@ -9,3 +9,7 @@ agents/credentials
 *.log
 !network-devices/samples/*.log
 __pycache__/
+!lab/samples/*.log
+!network-devices/inventory.csv
+!lab/inventory.csv
+!lab/devices/devices.csv

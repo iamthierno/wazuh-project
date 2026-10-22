@@ -1,0 +1,19 @@
+# =============================================================================
+#  Inventaire des équipements réseau supervisés (source unique de vérité)
+#  Une ligne par équipement : ip,nom,type,constructeur,site
+#    type : firewall | router | switch | wifi | vpn | proxy | autre
+#  Utilisé par `sudo ./deploy.sh --reconfigure` pour :
+#    - n'autoriser en syslog QUE ces IP (si SYSLOG_RESTRICT_TO_INVENTORY=yes)
+#    - enrichir chaque alerte : device.name / device.type / device.vendor /
+#      device.site / device.category (filtres et tableau de bord « Équipements »)
+#  Un équipement absent de l'inventaire est tout de même catégorisé d'après
+#  son décodeur (FortiGate -> firewall, Cisco IOS -> router, ...).
+#  Les lignes ci-dessous sont des EXEMPLES : remplacez-les par vos équipements.
+# =============================================================================
+ip,nom,type,constructeur,site
+192.168.1.1,FGT-SIEGE,firewall,Fortinet,Siège
+192.168.1.2,PA-DATACENTER,firewall,Palo Alto,Datacenter
+192.168.1.3,ASA-INTERNET,firewall,Cisco,Siège
+192.168.1.10,SW-CORE-01,switch,Cisco,Siège
+192.168.2.1,PFSENSE-DMZ,firewall,pfSense,DMZ
+192.168.3.1,MT-AGENCE-NORD,router,MikroTik,Agence Nord

@@ -68,7 +68,7 @@ ${C_BOLD}CONNEXION${C_RESET}
 ${C_BOLD}EXÉCUTION${C_RESET}
   -n <N>            installations en parallèle (défaut ${INSTALL_PARALLEL:-5})
   -dry, --dry       simulation : découverte + contrôles, aucune modification
-  -g <groupe>       groupe Wazuh (défaut : linux / windows / macos selon l'OS)
+  -g <groupe[,...]> groupe(s) Wazuh, ex. -g linux,web-prod (défaut : linux / windows / macos)
   -M <ip>           IP du manager (défaut : celle du déploiement)
   -x <ip,...>       exclure des IP / plages / sous-réseaux
   --force           réinstaller même si l'agent est présent
@@ -134,7 +134,7 @@ parse_args() {
       --creds)     CREDS_FILE="${2:-}"; shift ;;
       -n)          [[ "${2:-}" =~ ^[0-9]+$ ]] && (( $2 >= 1 && $2 <= 64 )) || die "-n attend un nombre entre 1 et 64"
                    PARALLEL="$2"; shift ;;
-      -g)          AGENT_GROUP="${2:-}"; [[ "$AGENT_GROUP" =~ ^[A-Za-z0-9_.-]+$ ]] || die "-g : nom de groupe invalide"; shift ;;
+      -g)          AGENT_GROUP="${2:-}"; [[ "$AGENT_GROUP" =~ ^[A-Za-z0-9_.-]+(,[A-Za-z0-9_.-]+)*$ ]] || die "-g : nom(s) de groupe invalide(s)"; shift ;;
       -M)          is_ipv4 "${2:-}" || die "-M attend une IP"; CLI_MANAGER="$2"; shift ;;
       -x)          EXCLUDES+=" ${2:-}"; shift ;;
       -f)          [[ -r "${2:-}" ]] || die "-f : fichier illisible : ${2:-}"; TARGETS_FILE="$2"; shift ;;
@@ -443,7 +443,7 @@ main() {
     fi
     if [[ "$ACTION" == install ]] && api_available && api_token >/dev/null 2>&1; then
       local g groups=()
-      if [[ -n "$AGENT_GROUP" ]]; then groups=("$AGENT_GROUP")
+      if [[ -n "$AGENT_GROUP" ]]; then IFS=, read -r -a groups <<<"$AGENT_GROUP"
       else os_selected linux && groups+=(linux); os_selected windows && groups+=(windows); os_selected macos && groups+=(macos); fi
       for g in "${groups[@]}"; do
         if api_ensure_group "$g"; then check_line "Groupe d'agents « ${g} »" OK

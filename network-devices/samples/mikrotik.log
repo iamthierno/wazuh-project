@@ -1,0 +1,3 @@
+Oct 22 10:04:00 MT-BRANCH system,error,critical login failure for user admin from 203.0.113.51 via winbox
+Oct 22 10:04:02 MT-BRANCH system,info,account user admin logged in from 192.168.88.10 via ssh
+Oct 22 10:04:05 MT-BRANCH system,info item added by admin

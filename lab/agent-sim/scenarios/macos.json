@@ -1,0 +1,24 @@
+[
+ {
+  "type": "syslog",
+  "label": "échecs SSH",
+  "location": "/var/log/system.log",
+  "line": "sshd[812]: Failed password for admin from 203.0.113.90 port 50122 ssh2",
+  "repeat": 10,
+  "interval": 0.3
+ },
+ {
+  "type": "syslog",
+  "label": "succès SSH même IP",
+  "location": "/var/log/system.log",
+  "line": "sshd[812]: Accepted password for admin from 203.0.113.90 port 50160 ssh2",
+  "repeat": 1
+ },
+ {
+  "type": "syslog",
+  "label": "sudo vers root",
+  "location": "/var/log/system.log",
+  "line": "sudo[901]:    admin : TTY=ttys001 ; PWD=/Users/admin ; USER=root ; COMMAND=/bin/cat /etc/master.passwd",
+  "repeat": 1
+ }
+]

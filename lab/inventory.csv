@@ -1,0 +1,12 @@
+# Inventaire du LABORATOIRE (équipements simulés sur le réseau Docker wazuh_default)
+ip,nom,type,constructeur,site
+172.18.0.201,FGT-SIEGE,firewall,Fortinet,Siège
+172.18.0.202,FGT-AGENCE-NORD,firewall,Fortinet,Agence Nord
+172.18.0.203,PA-DATACENTER,firewall,Palo Alto,Datacenter
+172.18.0.204,ASA-INTERNET,firewall,Cisco,Siège
+172.18.0.205,SW-CORE-01,switch,Cisco,Siège
+172.18.0.206,PFSENSE-DMZ,firewall,pfSense,DMZ
+172.18.0.207,XG-AGENCE-SUD,firewall,Sophos,Agence Sud
+172.18.0.208,SRX-DATACENTER,firewall,Juniper,Datacenter
+172.18.0.209,FTD-EDGE,firewall,Cisco,Siège
+172.18.0.210,MT-AGENCE-NORD,router,MikroTik,Agence Nord

@@ -21,6 +21,8 @@ export PROJECT_DIR
 . "${PROJECT_DIR}/lib/common.sh"
 # shellcheck source=lib/precheck.sh
 . "${PROJECT_DIR}/lib/precheck.sh"
+# shellcheck source=lib/devices.sh
+. "${PROJECT_DIR}/lib/devices.sh"
 # shellcheck source=lib/server_config.sh
 . "${PROJECT_DIR}/lib/server_config.sh"
 # shellcheck source=lib/native.sh
