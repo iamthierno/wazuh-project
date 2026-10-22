@@ -1,0 +1,13 @@
+# ip_source,fichier_echantillons (network-devices/samples/<fichier>.log)
+172.18.0.201,fortigate
+172.18.0.202,fortigate
+172.18.0.203,paloalto
+172.18.0.204,cisco-asa
+172.18.0.205,cisco-ios
+172.18.0.206,pfsense
+172.18.0.207,sophos-xg
+172.18.0.208,juniper-srx
+172.18.0.209,cisco-ftd
+172.18.0.210,mikrotik
+# Équipement NON inventorié : ses journaux doivent être rejetés (allowed-ips)
+172.18.0.250,fortigate

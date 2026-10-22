@@ -33,7 +33,7 @@ for f in "${SH[@]}"; do bash -n "$f" 2>/dev/null || ko "syntaxe bash : $f"; done
 
 # --------------------------------------------------------------------------
 section "2. Syntaxe Python / PowerShell / XML / YAML"
-for f in agents/lib/*.py; do
+for f in agents/lib/*.py lab/agent-sim/*.py lab/devices/*.py dashboards/*.py; do
   python3 -m py_compile "$f" 2>/dev/null && ok "python : $f" || ko "python : $f"
 done
 if command -v pwsh >/dev/null; then
@@ -44,7 +44,7 @@ if command -v pwsh >/dev/null; then
 else
   skip "pwsh absent : syntaxe PowerShell non vérifiée"
 fi
-for f in manager/rules/*.xml manager/shared/*/agent.conf; do
+for f in manager/rules/*.xml manager/decoders/*.xml manager/shared/*/agent.conf; do
   python3 - "$f" <<'EOF' && ok "xml : $f" || ko "xml : $f"
 import sys, xml.etree.ElementTree as ET
 ET.fromstring("<root>" + open(sys.argv[1], encoding="utf-8").read() + "</root>")
@@ -64,6 +64,17 @@ if docker compose version >/dev/null 2>&1; then
 else
   skip "docker compose absent"
 fi
+
+if python3 dashboards/build_network_dashboard.py | python3 -c '
+import json, sys
+objs = [json.loads(l) for l in sys.stdin]
+ids = {o["id"] for o in objs}
+refs = [r["id"] for o in objs for r in o.get("references", []) if r["type"] != "index-pattern"]
+assert all(r in ids for r in refs), "référence orpheline"
+print(len(objs))' >/dev/null 2>&1; then ok "tableau de bord : objets NDJSON cohérents"; else ko "tableau de bord : objets NDJSON"; fi
+for f in manager/lists/*; do
+  if grep -vE '^[^:]+:.*$' "$f" | grep -q .; then ko "liste CDB mal formée : $f"; else ok "liste CDB : $f"; fi
+done
 
 # --------------------------------------------------------------------------
 section "3. Interprétation des cibles"
@@ -134,10 +145,14 @@ fi
 section "6. Règles personnalisées (wazuh-logtest)"
 if [[ "${1:-}" == "--with-manager" ]]; then
   if out="$(sudo "${ROOT}/scripts/test-device-logs.sh" 2>&1)"; then
-    for id in 100101 100102 100110 100112 100120 100122; do
-      grep -q " ${id} " <<<"$out" && ok "règle ${id} déclenchée" || ko "règle ${id} non déclenchée"
+    # La nuit / le week-end, 100263-100264 (hors heures) remplacent les règles de configuration
+    for id in 100101 100102 100110 100112 100120 100122 100123 100131 100133 100141 100143 100150; do
+      if grep -q " ${id} " <<<"$out"; then ok "règle ${id} déclenchée"
+      elif [[ "$id" =~ ^1001(01|12|22|33)$ ]] && grep -qE " 10026[34] " <<<"$out"; then ok "règle ${id} (remplacée hors heures par 100263/100264)"
+      else ko "règle ${id} non déclenchée"; fi
     done
-    grep -q 'AUCUN' <<<"$out" && ko "échantillon non décodé" || ok "tous les échantillons sont décodés"
+    if awk '$2=="AUCUN" && $3=="-"' <<<"$out" | grep -q .; then ko "échantillon sans décodeur ni règle"
+    else ok "tous les échantillons produisent une règle"; fi
   else
     ko "test-device-logs.sh a échoué"
   fi

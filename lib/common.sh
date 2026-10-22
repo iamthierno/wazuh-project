@@ -179,7 +179,7 @@ port_in_use() {
   local port="$1" proto="${2:-tcp}" flag="-lnt" hex f
   [[ "$proto" == "udp" ]] && flag="-lnu"
   if have ss; then
-    ss "$flag" 2>/dev/null | awk '{print $5}' | grep -Eq "[:.]${port}\$"
+    ss "$flag" 2>/dev/null | awk 'NR>1{print $4}' | grep -Eq "[:.]${port}\$"
     return
   fi
   # Repli sans iproute2 : lecture de /proc/net (TCP : état 0A = LISTEN)

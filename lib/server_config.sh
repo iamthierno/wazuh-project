@@ -14,6 +14,7 @@ MARK_END="<!-- WAZUH-DEPLOY:END -->"
 # Bloc <ossec_config> ajouté à la fin de ossec.conf
 build_ossec_block() {
   local protos=() p ip
+  devices_apply_allowed_ips
   case "${SYSLOG_PROTOCOL:-udp}" in
     both) protos=(udp tcp) ;;
     tcp)  protos=(tcp) ;;
@@ -35,6 +36,51 @@ build_ossec_block() {
       echo "  </remote>"
     done
   fi
+  # Réponse active (XDR) : blocage temporaire des sources de brute force
+  if [[ "${ACTIVE_RESPONSE:-yes}" == "yes" ]]; then
+    echo "  <global>"
+    # Toutes les IP du serveur (dont les passerelles Docker) : sans cela, un
+    # administrateur qui se trompe de mot de passe avec install-agent.sh ferait
+    # bloquer le serveur Wazuh lui-même par ses propres agents.
+    local wl
+    # shellcheck disable=SC2046,SC2086  # découpage en mots voulu
+    wl="$(printf '%s\n' 127.0.0.1 ${MANAGER_IP} $(hostname -I 2>/dev/null) ${AR_WHITELIST} \
+          | grep -E '^[0-9.]+(/[0-9]+)?$' | sort -u)"
+    for ip in $wl; do
+      echo "    <white_list>${ip}</white_list>"
+    done
+    echo "  </global>"
+    echo "  <active-response>"
+    echo "    <command>firewall-drop</command>"
+    echo "    <location>local</location>"
+    echo "    <rules_id>${AR_LINUX_RULES}</rules_id>"
+    echo "    <timeout>${AR_TIMEOUT}</timeout>"
+    echo "  </active-response>"
+    echo "  <active-response>"
+    echo "    <command>netsh</command>"
+    echo "    <location>local</location>"
+    echo "    <rules_id>${AR_WINDOWS_RULES}</rules_id>"
+    echo "    <timeout>${AR_TIMEOUT}</timeout>"
+    echo "  </active-response>"
+  fi
+
+  # Notifications et enrichissement
+  if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
+    echo "  <integration>"
+    echo "    <name>slack</name>"
+    echo "    <hook_url>${SLACK_WEBHOOK_URL}</hook_url>"
+    echo "    <level>${ALERT_NOTIFY_LEVEL:-10}</level>"
+    echo "    <alert_format>json</alert_format>"
+    echo "  </integration>"
+  fi
+  if [[ -n "${VIRUSTOTAL_API_KEY:-}" ]]; then
+    echo "  <integration>"
+    echo "    <name>virustotal</name>"
+    echo "    <api_key>${VIRUSTOTAL_API_KEY}</api_key>"
+    echo "    <group>syscheck</group>"
+    echo "    <alert_format>json</alert_format>"
+    echo "  </integration>"
+  fi
   echo "</ossec_config>"
   echo "$MARK_END"
 }
@@ -52,9 +98,28 @@ apply_ossec_conf() {
   build_ossec_block >> "$tmp"
   # Enrôlement par mot de passe
   sed -i 's#<use_password>no</use_password>#<use_password>yes</use_password>#' "$tmp"
+  # Listes CDB du projet, insérées dans le <ruleset> PRINCIPAL : un second bloc
+  # <ruleset> désactiverait le chargement de etc/rules et etc/decoders.
+  sed -i '/<!-- WAZUH-DEPLOY:list -->/d' "$tmp"
+  local lists="" f
+  for f in "${PROJECT_DIR}"/manager/lists/*; do
+    [[ -f "$f" ]] && lists+="    <list>etc/lists/$(basename "$f")</list> <!-- WAZUH-DEPLOY:list -->\n"
+  done
+  [[ -n "$lists" ]] && sed -i "0,/<\/ruleset>/s#<\/ruleset>#${lists}  </ruleset>#" "$tmp"
   cat "$tmp" > "$conf"   # conserve propriétaire et droits
   rm -f "$tmp"
   log_ok "ossec.conf mis à jour (syslog ${SYSLOG_PROTOCOL}/${SYSLOG_PORT}, enrôlement par mot de passe)"
+}
+
+# Docker : le conteneur ne recopie /wazuh-config-mount qu'au premier démarrage.
+# On pousse donc aussi ossec.conf directement dans le conteneur (persisté par
+# le volume wazuh_etc), sinon une reconfiguration serait ignorée.
+docker_sync_ossec_conf() {
+  local src="${DOCKER_DIR}/config/wazuh_cluster/wazuh_manager.conf"
+  [[ "$(deploy_mode)" == "docker" && -f "$src" ]] || return 0
+  docker inspect "$MANAGER_CONTAINER" >/dev/null 2>&1 || return 0
+  mgr_copy "$src" /var/ossec/etc/ossec.conf root:wazuh 660
+  log_verbose "  ossec.conf synchronisé dans le conteneur ${MANAGER_CONTAINER}"
 }
 
 # Redémarre le manager
@@ -88,6 +153,7 @@ configure_manager_runtime() {
   local g src dest_dir f
 
   log_step "Configuration du manager"
+  docker_sync_ossec_conf
 
   # 1) Mot de passe d'enrôlement
   printf '%s\n' "$ENROLLMENT_PASSWORD" | mgr_write /var/ossec/etc/authd.pass root:wazuh 640
@@ -98,6 +164,11 @@ configure_manager_runtime() {
     [[ -e "$f" ]] || continue
     mgr_copy "$f" "/var/ossec/etc/rules/$(basename "$f")" wazuh:wazuh 660
     log_verbose "  règle   : $(basename "$f")"
+  done
+  for f in "${PROJECT_DIR}"/manager/lists/*; do
+    [[ -f "$f" ]] || continue
+    mgr_copy "$f" "/var/ossec/etc/lists/$(basename "$f")" wazuh:wazuh 660
+    log_verbose "  liste   : $(basename "$f")"
   done
   for f in "${PROJECT_DIR}"/manager/decoders/*.xml; do
     [[ -e "$f" ]] || continue
@@ -137,6 +208,26 @@ configure_manager_runtime() {
       fi
     fi
   done
+
+  # 4) Performances : files d'attente d'analysisd (mesuré en labo : avec les
+  #    valeurs par défaut, 13 % d'événements perdus à 10 000 EPS en rafale)
+  local lio=/var/ossec/etc/local_internal_options.conf q="${ANALYSISD_QUEUE_SIZE:-131072}"
+  { mgr_exec cat "$lio" 2>/dev/null | sed '/WAZUH-DEPLOY/,$d'
+    echo "# WAZUH-DEPLOY : réglages de performance (deploy.sh) — ne pas éditer en dessous"
+    for k in decode_event decode_winevt decode_output alerts archives firewall statistical; do
+      echo "analysisd.${k}_queue_size=${q}"
+    done
+  } > "${RUN_TMP:-/tmp}/wz-lio.$$"
+  mgr_copy "${RUN_TMP:-/tmp}/wz-lio.$$" "$lio" root:wazuh 640
+  rm -f "${RUN_TMP:-/tmp}/wz-lio.$$"
+  log_ok "Files d'attente d'analysisd dimensionnées (${q} événements)"
+
+  # 5) Indexer : catégorisation des équipements, rétention, tableaux de bord
+  devices_install_enrichment || true
+  devices_install_retention || true
+  if [[ -x "${PROJECT_DIR}/scripts/import-dashboards.sh" ]]; then
+    "${PROJECT_DIR}/scripts/import-dashboards.sh" || log_warn "Import des tableaux de bord incomplet"
+  fi
 }
 
 # Récapitulatif final des accès

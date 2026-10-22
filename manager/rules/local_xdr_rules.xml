@@ -1,0 +1,269 @@
+<!--
+  Règles de détection avancées (SIEM / XDR) — complètent le ruleset natif Wazuh
+  sur les angles morts constatés en laboratoire (Wazuh 4.14.9).
+  Plage d'ID réservée : 100200-100299
+  Fichier nommé « local_xdr » pour être chargé APRÈS local_network_devices.xml :
+  les règles <if_group> ne se rattachent qu'aux règles déjà chargées.
+  Chaque règle porte une technique MITRE ATT&CK et un niveau cohérent :
+    12+ = compromission probable (à traiter immédiatement)
+    10  = attaque ou action à haut risque
+    8   = action sensible à vérifier
+-->
+
+<!-- ============================== Linux ============================== -->
+<group name="linux,local_advanced,">
+
+  <!-- Ajout d'un compte à un groupe privilégié : aucune règle native -->
+  <rule id="100200" level="12">
+    <program_name>^usermod$|^gpasswd$</program_name>
+    <regex type="pcre2">add '?[^' ]+'? to (shadow )?group '?(sudo|wheel|admin|root|adm|docker|lxd)'?|to group (sudo|wheel|admin|root|adm|docker|lxd)$</regex>
+    <description>Linux : compte ajouté à un groupe privilégié (sudo/wheel/docker...).</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
+    <group>account_changed,pci_dss_10.2.5,pci_dss_10.2.7,gdpr_IV_32.2,</group>
+  </rule>
+
+  <!-- Connexion SSH réussie en root : niveau 3 nativement -->
+  <rule id="100201" level="10">
+    <if_sid>5715</if_sid>
+    <user>^root$</user>
+    <description>Linux : connexion SSH directe en root depuis $(srcip).</description>
+    <mitre>
+      <id>T1078.003</id>
+    </mitre>
+    <group>authentication_success,pci_dss_10.2.2,</group>
+  </rule>
+
+  <!-- Lecture des secrets système via sudo -->
+  <rule id="100202" level="10">
+    <if_group>sudo</if_group>
+    <regex type="pcre2">COMMAND=.*(/etc/shadow|/etc/gshadow|/etc/master\.passwd|id_rsa|id_ed25519|\.aws/credentials)</regex>
+    <description>Linux : accès à un fichier de secrets via sudo ($(srcuser)).</description>
+    <mitre>
+      <id>T1003.008</id>
+    </mitre>
+    <group>pci_dss_10.2.2,</group>
+  </rule>
+
+  <!-- FIM : persistance et élévation de privilèges -->
+  <rule id="100210" level="12">
+    <if_sid>550,553,554</if_sid>
+    <field name="file" type="pcre2">\.ssh/authorized_keys2?$</field>
+    <description>FIM : clé SSH autorisée ajoutée/modifiée ($(file)).</description>
+    <mitre>
+      <id>T1098.004</id>
+    </mitre>
+    <group>syscheck,persistence,pci_dss_11.5,</group>
+  </rule>
+
+  <rule id="100211" level="12">
+    <if_sid>550,553,554</if_sid>
+    <field name="file" type="pcre2">^/etc/sudoers(\.d/.*)?$</field>
+    <description>FIM : règles sudo modifiées ($(file)).</description>
+    <mitre>
+      <id>T1548.003</id>
+    </mitre>
+    <group>syscheck,privilege_escalation,pci_dss_11.5,</group>
+  </rule>
+
+  <rule id="100212" level="10">
+    <if_sid>550,553,554</if_sid>
+    <field name="file" type="pcre2">^(/etc/cron\.|/etc/crontab|/var/spool/cron)</field>
+    <description>FIM : tâche planifiée créée/modifiée ($(file)).</description>
+    <mitre>
+      <id>T1053.003</id>
+    </mitre>
+    <group>syscheck,persistence,pci_dss_11.5,</group>
+  </rule>
+
+  <rule id="100213" level="10">
+    <if_sid>550,553,554</if_sid>
+    <field name="file" type="pcre2">^/etc/systemd/system/.+\.(service|timer)$</field>
+    <description>FIM : service systemd créé/modifié ($(file)).</description>
+    <mitre>
+      <id>T1543.002</id>
+    </mitre>
+    <group>syscheck,persistence,pci_dss_11.5,</group>
+  </rule>
+
+  <rule id="100214" level="10">
+    <if_sid>550</if_sid>
+    <field name="file" type="pcre2">^/etc/ssh/sshd_config(\.d/.*)?$</field>
+    <description>FIM : configuration du serveur SSH modifiée.</description>
+    <mitre>
+      <id>T1556</id>
+    </mitre>
+    <group>syscheck,pci_dss_11.5,</group>
+  </rule>
+
+  <rule id="100215" level="8">
+    <if_sid>550</if_sid>
+    <field name="file" type="pcre2">^/etc/hosts$|^/etc/resolv\.conf$</field>
+    <description>FIM : résolution de noms modifiée ($(file)).</description>
+    <mitre>
+      <id>T1565.001</id>
+    </mitre>
+    <group>syscheck,pci_dss_11.5,</group>
+  </rule>
+
+</group>
+
+<!-- ============================== Windows ============================== -->
+<group name="windows,local_advanced,">
+
+  <!-- Journal de sécurité effacé : niveau 5 nativement -->
+  <rule id="100230" level="12">
+    <if_sid>63103</if_sid>
+    <description>Windows : journal de sécurité effacé sur $(win.system.computer).</description>
+    <mitre>
+      <id>T1070.001</id>
+    </mitre>
+    <group>pci_dss_10.5.2,gdpr_II_5.1.f,</group>
+  </rule>
+
+  <!-- Service installé : niveau 5 nativement -->
+  <rule id="100231" level="10">
+    <if_sid>61138</if_sid>
+    <description>Windows : nouveau service installé ($(win.eventdata.serviceName)).</description>
+    <mitre>
+      <id>T1543.003</id>
+    </mitre>
+  </rule>
+
+  <!-- Tâche planifiée créée : niveau 4 nativement -->
+  <rule id="100232" level="10">
+    <if_sid>60228</if_sid>
+    <description>Windows : tâche planifiée créée ($(win.eventdata.taskName)) par $(win.eventdata.subjectUserName).</description>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
+  </rule>
+
+  <!-- Ajout au groupe Admins du domaine / Administrateurs de l'entreprise -->
+  <rule id="100233" level="12">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4728$|^4756$</field>
+    <field name="win.eventdata.targetSid" type="pcre2">-(512|518|519)$</field>
+    <description>Windows : membre ajouté à un groupe d'administration du domaine ($(win.eventdata.targetUserName)).</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
+    <group>account_changed,pci_dss_10.2.5,</group>
+  </rule>
+
+  <!-- Corrélation Windows : logon réussi depuis l'IP d'un brute force (60204).
+       La règle générique 100265 ne s'applique pas : l'IP Windows est dans
+       win.eventdata.ipAddress et non dans srcip. -->
+  <rule id="100236" level="13" timeframe="300">
+    <if_sid>60106,92651,92652,92653</if_sid>
+    <if_matched_sid>60204</if_matched_sid>
+    <same_field>win.eventdata.ipAddress</same_field>
+    <description>Windows : compromission probable, logon réussi de $(win.eventdata.targetUserName) depuis $(win.eventdata.ipAddress) juste après un brute force.</description>
+    <mitre>
+      <id>T1110</id>
+      <id>T1078</id>
+    </mitre>
+    <group>authentication_success,pci_dss_10.2.4,</group>
+  </rule>
+
+  <!-- Kerberoasting : ticket de service demandé en RC4 -->
+  <rule id="100234" level="10">
+    <if_sid>60106,92651</if_sid>
+    <field name="win.system.eventID">^4769$</field>
+    <field name="win.eventdata.ticketEncryptionType">^0x17$</field>
+    <field name="win.eventdata.serviceName" type="pcre2" negate="yes">\$$|^krbtgt$</field>
+    <description>Windows : ticket Kerberos RC4 demandé pour $(win.eventdata.serviceName) (Kerberoasting possible).</description>
+    <mitre>
+      <id>T1558.003</id>
+    </mitre>
+  </rule>
+
+</group>
+
+<!-- ======================= Transverse / XDR ======================= -->
+<group name="local_advanced,">
+
+  <!-- Corrélation : succès d'authentification juste après un brute force, même source.
+       Équivalent de la règle native 40112, mais chargé après les règles du projet
+       pour couvrir aussi les équipements ajoutés (MikroTik, Sophos, FTD...). -->
+  <rule id="100265" level="13" timeframe="300">
+    <if_group>authentication_success</if_group>
+    <if_matched_group>authentication_failures</if_matched_group>
+    <same_source_ip />
+    <description>Compromission probable : connexion réussie depuis $(srcip) juste après un brute force.</description>
+    <mitre>
+      <id>T1110</id>
+      <id>T1078</id>
+    </mitre>
+    <group>authentication_success,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+  </rule>
+
+  <!-- Connexion d'administration réussie depuis une IP publique -->
+  <rule id="100260" level="10">
+    <if_sid>5715,64009,4722,100143,81626</if_sid>
+    <list field="srcip" lookup="not_address_match_key">etc/lists/private-networks</list>
+    <description>Accès d'administration réussi depuis une IP publique ($(srcip)).</description>
+    <mitre>
+      <id>T1133</id>
+    </mitre>
+    <group>authentication_success,pci_dss_10.2.5,</group>
+  </rule>
+
+  <!-- Indicateur de compromission : IP présente dans la liste de blocage -->
+  <rule id="100261" level="12">
+    <if_group>authentication|firewall|network_device|attack|ids|web|sshd|pam</if_group>
+    <list field="srcip" lookup="address_match_key">etc/lists/blocklist-ip</list>
+    <description>IP malveillante connue ($(srcip)) détectée.</description>
+    <mitre>
+      <id>T1071</id>
+    </mitre>
+    <group>ioc,</group>
+  </rule>
+
+  <rule id="100262" level="12">
+    <if_group>windows</if_group>
+    <list field="win.eventdata.ipAddress" lookup="address_match_key">etc/lists/blocklist-ip</list>
+    <description>IP malveillante connue ($(win.eventdata.ipAddress)) sur $(win.system.computer).</description>
+    <mitre>
+      <id>T1071</id>
+    </mitre>
+    <group>ioc,</group>
+  </rule>
+
+  <!-- Modification de configuration hors heures ouvrées -->
+  <rule id="100263" level="10">
+    <if_group>config_changed</if_group>
+    <time>8 pm - 7 am</time>
+    <description>Modification de configuration hors heures ouvrées (20h-7h).</description>
+    <mitre>
+      <id>T1562</id>
+    </mitre>
+    <group>config_changed,off_hours,</group>
+  </rule>
+
+  <rule id="100264" level="10">
+    <if_group>config_changed</if_group>
+    <weekday>weekends</weekday>
+    <description>Modification de configuration le week-end.</description>
+    <mitre>
+      <id>T1562</id>
+    </mitre>
+    <group>config_changed,off_hours,</group>
+  </rule>
+
+  <!-- Santé des agents : arrêt = sabotage possible -->
+  <rule id="100270" level="9">
+    <if_sid>506</if_sid>
+    <description>Agent Wazuh arrêté sur $(agent.name) : vérifier qu'il ne s'agit pas d'un sabotage.</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="100271" level="7">
+    <if_sid>504</if_sid>
+    <description>Agent Wazuh déconnecté : $(agent.name).</description>
+  </rule>
+
+</group>

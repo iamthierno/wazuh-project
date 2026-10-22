@@ -60,6 +60,17 @@
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_11.4,</group>
   </rule>
 
+  <!-- Balayage : nombreuses sessions refusées depuis la même source -->
+  <rule id="100113" level="10" frequency="20" timeframe="60" ignore="300">
+    <if_matched_sid>64508</if_matched_sid>
+    <same_field>source_address</same_field>
+    <description>Palo Alto: balayage probable depuis $(source_address) (20 refus en 1 min).</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>recon,firewall_drop,</group>
+  </rule>
+
   <!-- Modification de configuration (niveau 0 par défaut dans le ruleset natif) -->
   <rule id="100112" level="5">
     <if_sid>64500,64501,64502,64503,64504</if_sid>
@@ -93,6 +104,26 @@
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_11.4,</group>
   </rule>
 
+  <!-- Cisco FTD (mode LINA) : %FTD-6-113015 au niveau 2 nativement -->
+  <rule id="100123" level="5">
+    <if_sid>91500,91505</if_sid>
+    <match>-113015:</match>
+    <description>Cisco FTD: authentification AAA rejetée.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failed,cisco-ftd,pci_dss_10.2.4,</group>
+  </rule>
+
+  <rule id="100124" level="10" frequency="8" timeframe="120" ignore="300">
+    <if_matched_sid>100123</if_matched_sid>
+    <description>Cisco FTD: multiples échecs d'authentification (brute force possible).</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failures,cisco-ftd,</group>
+  </rule>
+
   <!-- %ASA-5-111008 / 111010 : commandes de configuration exécutées -->
   <rule id="100122" level="5">
     <if_sid>64000,64005</if_sid>
@@ -100,6 +131,129 @@
     <match>write memory|copy running|configure|clear configure</match>
     <description>Cisco ASA: commande de configuration exécutée.</description>
     <group>config_changed,pci_dss_10.2.7,</group>
+  </rule>
+
+</group>
+
+<!-- ============================ Cisco IOS ============================ -->
+<group name="cisco_ios,network_device,">
+
+  <!-- Le décodeur natif n'extrait pas l'IP source : chaque échec (4724, niveau 9)
+       produit une alerte. Cette règle agrège la rafale en une alerte de brute force. -->
+  <rule id="100125" level="10" frequency="8" timeframe="120" ignore="300">
+    <if_matched_sid>4724</if_matched_sid>
+    <same_location />
+    <description>Cisco IOS: brute force sur l'équipement (8 échecs de connexion en 2 min).</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failures,</group>
+  </rule>
+
+</group>
+
+<!-- ============================ Juniper SRX ============================ -->
+<!-- Décodeurs : manager/decoders/local_network_devices_decoders.xml -->
+<group name="juniper,network_device,">
+
+  <rule id="100130" level="0">
+    <decoded_as>juniper-srx-flow</decoded_as>
+    <description>Juniper SRX: événement de flux.</description>
+  </rule>
+
+  <rule id="100131" level="5">
+    <if_sid>100130</if_sid>
+    <action>DENY</action>
+    <description>Juniper SRX: session refusée $(srcip) -> $(dstip):$(dstport) (politique $(policy)).</description>
+    <group>firewall_drop,pci_dss_1.4,</group>
+  </rule>
+
+  <rule id="100132" level="10" frequency="20" timeframe="60" ignore="300">
+    <if_matched_sid>100131</if_matched_sid>
+    <same_source_ip />
+    <description>Juniper SRX: balayage probable depuis $(srcip) (20 refus en 1 min).</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>recon,firewall_drop,</group>
+  </rule>
+
+  <rule id="100133" level="5">
+    <decoded_as>juniper-srx-mgmt</decoded_as>
+    <field name="event_type">^UI_COMMIT</field>
+    <description>Juniper SRX: configuration validée (commit) par $(dstuser).</description>
+    <group>config_changed,pci_dss_10.2.7,</group>
+  </rule>
+
+</group>
+
+<!-- ============================ MikroTik ============================ -->
+<group name="mikrotik,network_device,">
+
+  <rule id="100140" level="0">
+    <decoded_as>mikrotik</decoded_as>
+    <description>MikroTik: événement RouterOS.</description>
+  </rule>
+
+  <rule id="100141" level="5">
+    <if_sid>100140</if_sid>
+    <match>login failure for user</match>
+    <description>MikroTik: échec de connexion de $(dstuser) depuis $(srcip) via $(service).</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failed,pci_dss_10.2.4,</group>
+  </rule>
+
+  <rule id="100142" level="10" frequency="8" timeframe="120" ignore="300">
+    <if_matched_sid>100141</if_matched_sid>
+    <same_source_ip />
+    <description>MikroTik: brute force depuis $(srcip).</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failures,</group>
+  </rule>
+
+  <rule id="100143" level="3">
+    <if_sid>100140</if_sid>
+    <match>logged in from</match>
+    <description>MikroTik: connexion de $(dstuser) depuis $(srcip) via $(service).</description>
+    <group>authentication_success,</group>
+  </rule>
+
+  <rule id="100144" level="5">
+    <if_sid>100140</if_sid>
+    <regex type="pcre2"> (added|changed|removed) by \S+$</regex>
+    <description>MikroTik: configuration modifiée par $(dstuser).</description>
+    <group>config_changed,pci_dss_10.2.7,</group>
+  </rule>
+
+</group>
+
+<!-- ============================ Sophos Firewall ============================ -->
+<group name="sophos,network_device,">
+
+  <!-- Échec d'authentification : niveau 0 nativement (règle 70020) -->
+  <rule id="100150" level="5">
+    <if_sid>70020</if_sid>
+    <field name="log_component">Authentication</field>
+    <field name="sophos_fw_status_msg">^Failed$</field>
+    <description>Sophos: échec d'authentification de $(user_name) depuis $(src_ip).</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failed,pci_dss_10.2.4,</group>
+  </rule>
+
+  <rule id="100151" level="10" frequency="8" timeframe="120" ignore="300">
+    <if_matched_sid>100150</if_matched_sid>
+    <same_field>src_ip</same_field>
+    <description>Sophos: brute force depuis $(src_ip).</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failures,</group>
   </rule>
 
 </group>

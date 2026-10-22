@@ -56,7 +56,13 @@ h="$(curl -sk -m 10 -u "admin:${INDEXER_ADMIN_PASSWORD}" https://127.0.0.1:9200/
 st="$(jq -r '.status // empty' <<<"$h" 2>/dev/null)"
 case "$st" in
   green)  check_line "Indexer (cluster)" OK "green" ;;
-  yellow) check_line "Indexer (cluster)" WARN "yellow (normal en mono-nœud si des réplicas sont demandés)" ;;
+  yellow)
+    # En mono-nœud, un index système créé avec 1 réplica (ex. verrou de l'ISM)
+    # laisse le cluster « yellow » sans conséquence. Seuls les index de données comptent.
+    bad="$(curl -sk -m 10 -u "admin:${INDEXER_ADMIN_PASSWORD}" "https://127.0.0.1:9200/_cat/indices?h=health,index" 2>/dev/null \
+           | awk '$1!="green" && $2 !~ /^\./ {print $2}' | paste -sd' ' -)"
+    if [[ -z "$bad" ]]; then check_line "Indexer (cluster)" OK "yellow bénin : réplicas d'index système non allouables en mono-nœud"
+    else check_line "Indexer (cluster)" WARN "index non verts : ${bad}"; fi ;;
   *)      check_line "Indexer (cluster)" KO "${st:-injoignable}"; ko ;;
 esac
 today="$(date -u +%Y.%m.%d)"

@@ -1,0 +1,2 @@
+Oct 22 2026 10:03:00 FTD-EDGE : %FTD-6-113015: AAA user authentication Rejected : reason = Invalid password : local database : user = admin : user IP = 203.0.113.42
+Oct 22 2026 10:03:05 FTD-EDGE : %FTD-4-106023: Deny tcp src outside:203.0.113.42/5555 dst inside:192.168.1.30/3389 by access-group "outside_in" [0x0, 0x0]

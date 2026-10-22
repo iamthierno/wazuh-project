@@ -119,7 +119,40 @@ Pour vérifier le décodage et les alertes : `sudo ./scripts/test-device-logs.sh
 
 ---
 
-## 4. Exploitation
+## 4. Détection avancée (SIEM / XDR)
+
+Wazuh apporte nativement environ 4 500 règles et les décodeurs de Linux,
+Windows, macOS, FortiGate, Palo Alto, Cisco, pfSense, Sophos, etc. Le projet
+s'appuie sur ce socle et **ajoute uniquement les angles morts constatés en
+laboratoire** :
+
+- 47 règles réparties en trois groupes : persistance et privilèges Linux et Windows ; corrélations « brute force puis succès » (niveau 13) ; IP publiques et IOC.
+- Des décodeurs Juniper SRX et MikroTik.
+- La **réponse active**, qui bloque 600 s les sources de brute force.
+- La rétention des alertes, les notifications Slack et l'analyse VirusTotal.
+
+Détail : [docs/detection.md](docs/detection.md).
+
+Les équipements réseau sont **catégorisés** à partir de
+`network-devices/inventory.csv` (type, constructeur, site). Le tableau de bord
+**« Équipements réseau (SOC) »** est importé automatiquement.
+
+## 5. Laboratoire et tests de robustesse
+
+`sudo ./lab/lab.sh up` monte un parc de test complet :
+
+- 3 VMs Linux avec agent réel ;
+- 2 Windows et 1 macOS (agents simulés au protocole réel) ;
+- 11 équipements réseau, chacun avec sa propre IP source.
+
+`attack` rejoue les scénarios d'attaque et `load` mesure la tenue en charge.
+Résultats : [docs/tests-robustesse.md](docs/tests-robustesse.md). On y trouve
+0 perte à 15 000 EPS après correction, 50 agents simultanés et 9 défauts
+corrigés.
+
+---
+
+## 6. Exploitation
 
 | Script | Rôle |
 |---|---|
@@ -128,6 +161,7 @@ Pour vérifier le décodage et les alertes : `sudo ./scripts/test-device-logs.sh
 | `scripts/restore.sh <archive>` | restauration (même mode, même version) |
 | `scripts/uninstall.sh [--keep-data]` | désinstallation, avec sauvegarde proposée au préalable |
 | `scripts/test-device-logs.sh [équipement\|fichier] [--send]` | test des décodeurs et règles sur des logs |
+| `scripts/import-dashboards.sh` | (ré)import du tableau de bord « Équipements réseau (SOC) » |
 
 Journaux d'exécution : `/var/log/wazuh-deploy/` (un fichier par exécution, sans
 aucun mot de passe en clair).
@@ -136,21 +170,22 @@ Dépannage : [docs/troubleshooting.md](docs/troubleshooting.md).
 
 ---
 
-## 5. Arborescence
+## 7. Arborescence
 
 ```
 wazuh-project/
 ├── deploy.sh                    # Point d'entrée : menu natif / Docker / état / sauvegarde / désinstallation
 ├── config.env                   # Tous les paramètres
-├── lib/                         # common, precheck, native, docker, certs, server_config
+├── lib/                         # common, precheck, native, docker, certs, server_config, devices
 ├── docker/
 │   ├── docker-compose.yml       # Stack single-node paramétrée (.env généré)
 │   ├── generate-indexer-certs.yml
 │   ├── config/                  # Configurations officielles 4.14.9 + modèles (mots de passe)
 │   └── deployer/Dockerfile      # Outils de déploiement des agents (mode Docker)
 ├── manager/
-│   ├── rules/                   # Règles complémentaires (équipements réseau)
-│   ├── decoders/                # Décodeurs personnalisés
+│   ├── rules/                   # local_network_devices.xml + local_xdr_rules.xml
+│   ├── decoders/                # Juniper SRX (mode event), MikroTik
+│   ├── lists/                   # private-networks, blocklist-ip (CDB)
 │   └── shared/{linux,windows,macos}/agent.conf   # Configuration centralisée par groupe
 ├── agents/
 │   ├── install-agent.sh         # Découverte et déploiement à distance
@@ -158,7 +193,9 @@ wazuh-project/
 │   ├── active-winRm.ps1         # Prépare un poste Windows (WinRM)
 │   ├── credentials.example      # Modèle de fichier d'identifiants
 │   └── packages/                # Cache des paquets (--offline)
-├── network-devices/             # Guides par constructeur + échantillons de logs
+├── network-devices/             # inventory.csv, guides par constructeur, échantillons de logs
+├── dashboards/                  # Tableau de bord « Équipements réseau (SOC) »
+├── lab/                         # Laboratoire : VMs, agents simulés, équipements, charge
 ├── scripts/                     # healthcheck, backup, restore, uninstall, test-device-logs
 ├── tests/run-tests.sh           # Tests automatiques (shellcheck, cibles, payloads, règles)
 └── docs/                        # prérequis, agents, dépannage

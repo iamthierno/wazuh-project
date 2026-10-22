@@ -1,0 +1,168 @@
+[
+ {
+  "type": "windows",
+  "label": "4625 échecs RDP (brute force)",
+  "id": 4625,
+  "channel": "Security",
+  "provider": "Microsoft-Windows-Security-Auditing",
+  "keywords": "0x8010000000000000",
+  "task": 12544,
+  "message": "An account failed to log on.",
+  "data": {
+   "SubjectUserSid": "S-1-0-0",
+   "TargetUserName": "administrateur",
+   "TargetDomainName": "CORP",
+   "Status": "0xc000006d",
+   "SubStatus": "0xc000006a",
+   "LogonType": "10",
+   "IpAddress": "203.0.113.66",
+   "IpPort": "51234",
+   "WorkstationName": "ATTACKER"
+  },
+  "repeat": 12,
+  "interval": 0.4
+ },
+ {
+  "type": "windows",
+  "label": "4624 succès RDP même IP",
+  "id": 4624,
+  "channel": "Security",
+  "provider": "Microsoft-Windows-Security-Auditing",
+  "keywords": "0x8020000000000000",
+  "task": 12544,
+  "message": "An account was successfully logged on.",
+  "data": {
+   "TargetUserName": "administrateur",
+   "TargetDomainName": "CORP",
+   "LogonType": "10",
+   "IpAddress": "203.0.113.66",
+   "IpPort": "51300",
+   "AuthenticationPackageName": "Negotiate"
+  },
+  "repeat": 1
+ },
+ {
+  "type": "windows",
+  "label": "4720 compte créé",
+  "id": 4720,
+  "channel": "Security",
+  "provider": "Microsoft-Windows-Security-Auditing",
+  "keywords": "0x8020000000000000",
+  "task": 13824,
+  "message": "A user account was created.",
+  "data": {
+   "TargetUserName": "svc-backup2",
+   "TargetDomainName": "CORP",
+   "SubjectUserName": "administrateur",
+   "SubjectDomainName": "CORP"
+  },
+  "repeat": 1
+ },
+ {
+  "type": "windows",
+  "label": "4732 ajout aux Administrateurs",
+  "id": 4732,
+  "channel": "Security",
+  "provider": "Microsoft-Windows-Security-Auditing",
+  "keywords": "0x8020000000000000",
+  "task": 13826,
+  "message": "A member was added to a security-enabled local group.",
+  "data": {
+   "MemberName": "-",
+   "MemberSid": "S-1-5-21-111-222-333-1120",
+   "TargetUserName": "Administrators",
+   "TargetDomainName": "Builtin",
+   "TargetSid": "S-1-5-32-544",
+   "SubjectUserName": "administrateur"
+  },
+  "repeat": 1
+ },
+ {
+  "type": "windows",
+  "label": "4698 tâche planifiée",
+  "id": 4698,
+  "channel": "Security",
+  "provider": "Microsoft-Windows-Security-Auditing",
+  "keywords": "0x8020000000000000",
+  "task": 12804,
+  "message": "A scheduled task was created.",
+  "data": {
+   "SubjectUserName": "administrateur",
+   "SubjectDomainName": "CORP",
+   "TaskName": "\\Microsoft\\Windows\\UpdaterSvc"
+  },
+  "repeat": 1
+ },
+ {
+  "type": "windows",
+  "label": "7045 service installé",
+  "id": 7045,
+  "channel": "System",
+  "provider": "Service Control Manager",
+  "guid": "555908d1-a6d7-4695-8e1e-26931d2012f4",
+  "level": 4,
+  "keywords": "0x8080000000000000",
+  "message": "A service was installed in the system.",
+  "data": {
+   "ServiceName": "UpdaterSvc",
+   "ImagePath": "C:\\\\Users\\\\Public\\\\updater.exe",
+   "ServiceType": "user mode service",
+   "StartType": "auto start",
+   "AccountName": "LocalSystem"
+  },
+  "repeat": 1
+ },
+ {
+  "type": "windows",
+  "label": "4769 ticket Kerberos RC4",
+  "id": 4769,
+  "channel": "Security",
+  "provider": "Microsoft-Windows-Security-Auditing",
+  "keywords": "0x8020000000000000",
+  "task": 14337,
+  "message": "A Kerberos service ticket was requested.",
+  "data": {
+   "TargetUserName": "jdoe@CORP.LOCAL",
+   "ServiceName": "svc-sql",
+   "TicketEncryptionType": "0x17",
+   "IpAddress": "::ffff:10.10.20.50",
+   "Status": "0x0"
+  },
+  "repeat": 1
+ },
+ {
+  "type": "windows",
+  "label": "4625 depuis IP de la liste de blocage",
+  "id": 4625,
+  "channel": "Security",
+  "provider": "Microsoft-Windows-Security-Auditing",
+  "keywords": "0x8010000000000000",
+  "task": 12544,
+  "message": "An account failed to log on.",
+  "data": {
+   "TargetUserName": "guest",
+   "TargetDomainName": "CORP",
+   "Status": "0xc000006d",
+   "SubStatus": "0xc000006a",
+   "LogonType": "3",
+   "IpAddress": "198.51.100.66"
+  },
+  "repeat": 1
+ },
+ {
+  "type": "windows",
+  "label": "1102 journal effacé",
+  "id": 1102,
+  "channel": "Security",
+  "provider": "Microsoft-Windows-Eventlog",
+  "guid": "fc65ddd8-d6ef-4962-83d5-6e5cfe9ce148",
+  "level": 4,
+  "keywords": "0x4020000000000000",
+  "message": "The audit log was cleared.",
+  "data": {
+   "SubjectUserName": "administrateur",
+   "SubjectDomainName": "CORP"
+  },
+  "repeat": 1
+ }
+]
